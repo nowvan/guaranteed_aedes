@@ -81,7 +81,7 @@ function Aedes (opts) {
   this.brokers = {}
 
   const heartbeatTopic = $SYS_PREFIX + that.id + '/heartbeat'
-  // TODO:broker發送到特定topic反映他還活著 暫時不用檢查broker是否活著
+  // TODO: 測試用 broker發送到特定topic反映他還活著 暫時不用檢查broker是否活著
   this._heartbeatInterval = null
       // setInterval(heartbeat, opts.heartbeatInterval)
 
@@ -178,6 +178,10 @@ function emitPacket (packet, done) {
 }
 
 function enqueueOffline (packet, done) {
+
+  // TODO: 原先是將訊息先放進persistence的地方 在這放入更過的sub_outbox
+  //  不只是還在線上的沒斷線得也要檢查
+
   const enqueuer = this.broker._enqueuers.get()
 
   enqueuer.complete = done
@@ -187,7 +191,7 @@ function enqueueOffline (packet, done) {
   //
   this.broker.persistence.subscriptionsByTopic(
     packet.topic,
-    //call DoEnqueues ()
+    //call doneEnqueue ()
     enqueuer.done
   )
 }
@@ -204,6 +208,7 @@ function DoEnqueues () {
 
   this.done = function doneEnqueue (err, subs) {
     const broker = that.broker
+    //TODO: subs得地方要改改 改成有sub_outbox也有一份 是unsubscribe處理不掉的嘿嘿
 
     if (err) {
       // is this really recoverable?
@@ -303,7 +308,7 @@ Aedes.prototype._finishRegisterClient = function (client) {
   this.connectedClients++
   this.clients[client.id] = client
   this.emit('client', client)
-  //TODO: 先不用完成訂閱後發送系統的通知
+  //TODO: 測試用 先不用完成訂閱後發送系統的通知
 
   // this.publish({
   //   topic: $SYS_PREFIX + this.id + '/new/clients',
