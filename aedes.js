@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid')
 const bulk = require('bulk-write-stream')
 const reusify = require('reusify')
 const { pipeline } = require('readable-stream')
-const Packet = require('aedes-packet')
+const Packet = require('./lib/aedes-packet')
 const memory = require('./lib/outbox')
 const mqemitter = require('mqemitter')
 const Client = require('./lib/client')
@@ -39,7 +39,7 @@ function Aedes (opts) {
   if (!(this instanceof Aedes)) {
     return new Aedes(opts)
   }
-//合併
+  // 合併
   opts = Object.assign({}, defaultOptions, opts)
 
   this.id = opts.id || uuidv4()
@@ -63,7 +63,7 @@ function Aedes (opts) {
   this.persistence.broker = this
   this._parallel = parallel()
   this._series = series()
-  //reusify再利用
+  // reusify再利用
   this._enqueuers = reusify(DoEnqueues)
 
   this.preConnect = opts.preConnect
@@ -83,7 +83,7 @@ function Aedes (opts) {
   const heartbeatTopic = $SYS_PREFIX + that.id + '/heartbeat'
   // TODO: 測試用 broker發送到特定topic反映他還活著 暫時不用檢查broker是否活著
   this._heartbeatInterval = null
-      // setInterval(heartbeat, opts.heartbeatInterval)
+  // setInterval(heartbeat, opts.heartbeatInterval)
 
   const bufId = Buffer.from(that.id, 'utf8')
 
@@ -178,7 +178,6 @@ function emitPacket (packet, done) {
 }
 
 function enqueueOffline (packet, done) {
-
   // TODO: 原先是將訊息先放進persistence的地方 在這放入更過的sub_outbox
   //  不只是還在線上的沒斷線得也要檢查
 
@@ -191,12 +190,12 @@ function enqueueOffline (packet, done) {
   //
   this.broker.persistence.subscriptionsByTopic(
     packet.topic,
-    //call doneEnqueue ()
+    // call doneEnqueue ()
     enqueuer.done
   )
 }
 
-//reuse的方法 enqueueOffline用到這個
+// reuse的方法 enqueueOffline用到這個
 function DoEnqueues () {
   this.next = null
   this.complete = null
@@ -208,7 +207,6 @@ function DoEnqueues () {
 
   this.done = function doneEnqueue (err, subs) {
     const broker = that.broker
-    //TODO: subs得地方要改改 改成有sub_outbox也有一份 是unsubscribe處理不掉的嘿嘿
 
     if (err) {
       // is this really recoverable?
@@ -230,6 +228,10 @@ function DoEnqueues () {
     that.topic = null
 
     broker.persistence.outgoingEnqueueCombi(subs, packet, complete)
+    // TODO: subs得地方要改改 改成有sub_outbox也有一份 是unsubscribe處理不掉的嘿嘿
+    // TODO: enqueueSubOutbox 加入到這裡但是順序跟callback要處理 先不處理callback 直接用小段的方法處理 先傳空的callback
+    broker.persistence.enqueueSubOutbox(subs, packet, () => {})
+
     broker._enqueuers.release(that)
   }
 }
@@ -247,29 +249,29 @@ function callPublished (_, done) {
 }
 
 const publishFuncsSimple = [
-    //if (packet.retain) {
+  // if (packet.retain) {
   //     this.broker.persistence.storeRetained(packet, done)
   storeRetained,
-    //this.broker.mq.emit(packet, done)
+  // this.broker.mq.emit(packet, done)
   emitPacket,
-    //this.broker.published(this.packet, this.client, done)
+  // this.broker.published(this.packet, this.client, done)
   //   this.broker.emit('publish', this.packet, this.client)
   callPublished
 ]
 const publishFuncsQoS = [
-    //if (packet.retain) {
+  // if (packet.retain) {
   //     this.broker.persistence.storeRetained(packet, done)
   storeRetained,
-    //const enqueuer = this.broker._enqueuers.get()
+  // const enqueuer = this.broker._enqueuers.get()
   //
   // this.broker.persistence.subscriptionsByTopic(
   //   packet.topic,
   //   enqueuer.done
   // )
   enqueueOffline,
-    //this.broker.mq.emit(packet, done)
+  // this.broker.mq.emit(packet, done)
   emitPacket,
-    //this.broker.published(this.packet, this.client, done)
+  // this.broker.published(this.packet, this.client, done)
   //   this.broker.emit('publish', this.packet, this.client)
   callPublished
 ]
@@ -308,7 +310,7 @@ Aedes.prototype._finishRegisterClient = function (client) {
   this.connectedClients++
   this.clients[client.id] = client
   this.emit('client', client)
-  //TODO: 測試用 先不用完成訂閱後發送系統的通知
+  // TODO: 測試用 先不用完成訂閱後發送系統的通知
 
   // this.publish({
   //   topic: $SYS_PREFIX + this.id + '/new/clients',
@@ -381,3 +383,8 @@ function PublishState (broker, client, packet) {
 }
 
 function noop () {}
+
+// Aedes.on('receipt',function (receiptPacket,client) {
+//   console.log('receipt ', receiptPacket, client)
+//   this.broker.mq.emit(receiptPacket, done)
+// })
