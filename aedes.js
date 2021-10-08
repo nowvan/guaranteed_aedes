@@ -227,10 +227,10 @@ function DoEnqueues () {
     that.complete = null
     that.topic = null
 
-    broker.persistence.outgoingEnqueueCombi(subs, packet, complete)
+    // broker.persistence.outgoingEnqueueCombi(subs, packet, complete)
     // TODO: subs得地方要改改 改成有sub_outbox也有一份 是unsubscribe處理不掉的嘿嘿
     // TODO: enqueueSubOutbox 加入到這裡但是順序跟callback要處理 先不處理callback 直接用小段的方法處理 先傳空的callback
-    broker.persistence.enqueueSubOutbox(subs, packet, () => {})
+    broker.persistence.enqueueSubOutbox(broker, subs, packet, complete)
 
     broker._enqueuers.release(that)
   }
