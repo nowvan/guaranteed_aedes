@@ -53,6 +53,7 @@ function Aedes (opts) {
     concurrency: opts.concurrency,
     matchEmptyLevels: true // [MQTT-4.7.1-3]
   })
+  //in aedes.js
   this.handle = function handle (conn, req) {
     conn.setMaxListeners(opts.concurrency * 2)
     // create a new Client instance for a new connection
